@@ -1,0 +1,77 @@
+classDiagram
+    direction TB
+
+    class Priority {
+        <<enumeration>>
+        LOW
+        MEDIUM
+        HIGH
+    }
+
+    class Task {
+        +String name
+        +String pet_name
+        +int start_time
+        +int total_blocks
+        +bool daily
+        +String day
+        +Priority priority
+        +bool preference
+        +bool is_complete
+        +toggle_complete() None
+        +toggle_preference() None
+        +toggle_daily() None
+        +set_priority(Priority priority) None
+        +set_day(String day) None
+        +set_start_time(int start) None
+        +set_total_blocks(int total) None
+        +to_dict() dict
+        +from_dict(dict data) Task$
+    }
+
+    class Pet {
+        +String name
+        +String species
+        +List~Task~ tasks
+        +add_task(Task task) None
+        +remove_task(Task task) None
+        +get_tasks(String filter) List~Task~
+        +to_dict() dict
+        +from_dict(dict data) Pet$
+    }
+
+    class Owner {
+        +String name
+        +List~Pet~ pets
+        +dict availability
+        +add_pet(Pet pet) None
+        +remove_pet(Pet pet) None
+        +to_dict() dict
+        +from_dict(dict data) Owner$
+    }
+
+    class Scheduler {
+        +int id
+        +Owner owner
+        +dict weekly_plan
+        +List~String~ plan_explanation
+        +get_tasks(Pet pet) List~Task~
+        +get_sorted_tasks(String sort_type, String sort_order) List~Task~
+        +generate_schedule() Generator
+        +get_pet_happiness(Pet pet) int
+        +to_dict() dict
+        +from_dict(dict data) Scheduler$
+    }
+
+    class Storage {
+        +List~Scheduler~ schedulers
+        +save(Scheduler scheduler) None
+        +load() List~Scheduler~
+    }
+
+    Scheduler "1" *-- "1" Owner : has
+    Owner "1" *-- "*" Pet : owns
+    Pet "1" *-- "*" Task : has
+    Scheduler "1" --> "*" Task : weekly_plan
+    Storage "1" --> "*" Scheduler : manages
+    Task --> Priority : uses
