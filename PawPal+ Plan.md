@@ -44,6 +44,7 @@ Attributes:
 Methods:
 - add_pet(Pet): None
 - remove_pet(Pet): None
+- update_availability(dict{day:list[bool]}): None
 - to_dict(): dict
 - from_dict(data: dict)$ Owner
 

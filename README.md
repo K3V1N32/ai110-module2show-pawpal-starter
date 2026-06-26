@@ -27,7 +27,7 @@ Your final app should:
 ### Setup
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
@@ -46,12 +46,37 @@ pip install -r requirements.txt
 
 Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
 
-```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+```bash
+Welcome to the PawPal+ scheduling system!
+Created owner: Kevin
+Scheduler created.
+Created pet: Tigrex, a cat
+Created pet: Bond, a dog
+Linked Tigrex to Kevin
+Linked Bond to Kevin
+Added tasks for Tigrex: ['Feed', 'Feed', 'Feed', 'Vet visit', 'Training']
+Added tasks for Bond: ['Feed', 'Feed', 'Feed', 'Walk', 'Walk', 'Vet visit', 'Training']
+Starting schedule generation...
+Conflict on monday: 1: Vet visit for Tigrex vs 2: Training for Tigrex
+Choose which task to keep (1 or 2): 1
+Conflict on tuesday: 1: Vet visit for Bond vs 2: Training for Bond
+Choose which task to keep (1 or 2): 1
+Schedule generation complete.
+--Tasks for monday--
+Feed for Tigrex at 8:00 for 0.5 hour(s)
+Feed for Bond at 8:00 for 0.5 hour(s)
+Walk for Bond at 9:00 for 0.5 hour(s)
+Vet visit for Tigrex at 10:00 for 1.0 hour(s)
+Feed for Tigrex at 15:00 for 0.5 hour(s)
+Feed for Bond at 15:00 for 0.5 hour(s)
+Walk for Bond at 17:00 for 0.5 hour(s)
+Feed for Tigrex at 19:00 for 0.5 hour(s)
+Feed for Bond at 19:00 for 0.5 hour(s)
+Tigrex happiness: 80%
+Bond happiness: 85%
+Explanations for scheduling decisions:
+- HIGH priority conflict on monday at 10:00: user kept Vet visit over Training.
+- HIGH priority conflict on tuesday at 11:00: user kept Vet visit over Training.
 ```
 
 ## 🧪 Testing PawPal+

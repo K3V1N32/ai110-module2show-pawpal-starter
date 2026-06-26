@@ -48,6 +48,7 @@ classDiagram
         +dict availability
         +add_pet(Pet pet) None
         +remove_pet(Pet pet) None
+        +update_availability(dict)
         +to_dict() dict
         +from_dict(dict data) Owner$
     }

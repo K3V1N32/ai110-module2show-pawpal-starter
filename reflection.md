@@ -16,9 +16,9 @@
 **b. Design changes**
 
 - Did your design change during implementation?
-  - Answer.
+  - Yes
 - If yes, describe at least one change and why you made it.
-  - Answer.
+  - One major change during implementation, was that if we scheduled a night time feeding at 8pm, the algorithm would reject the event since it technically exceeded the daily time blocks, so we adjusted the blocks allowed by 2, letting night time tasks that don't exceed 9pm to be scheduled correctly.
 
 **c. ++ Three Actions a user should be able to perform ++**
 
@@ -33,9 +33,9 @@
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
-  - Answer.
+  - The scheduler considers start time, time blocks(in half hour sections), priority, and preference. Priority is the main decider on whether one task is scheduled over another, with preference being a tie breaker.
 - How did you decide which constraints mattered most?
-  - Answer.
+  - I discussed with Claude, I initially thought that preference should matter more in the priority handling, but if I went with that logic something like a MEDIUM priority feeding could be scheduled over a HIGH priority vet visit if the preference was on the feeding, therefore I decided that Priority would matter more than preference, but preference would matter when 2 tasks have the same priority.
 
 **b. Tradeoffs**
 
