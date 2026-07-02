@@ -1,6 +1,7 @@
 __pycache__/
 data/
 .venv/
+.claude/
 .venv_new/
 .pytest_cache/
 .DS_Store

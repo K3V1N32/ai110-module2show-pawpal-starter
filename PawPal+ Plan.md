@@ -139,20 +139,24 @@ Tasks will be given a start time and a total blocks attribute, to account for a 
 
 Only one task can be assigned per time block, no overlap may happen. Priority gets slot, use preference as tie-breaker.
 
-If two tasks have the same priority and preference, for low and medium just pick the task for that timeblock at random, for high priority ask the user which should be scheduled. This should be available for CLI and Streamlit interface, conflict_resolver methods will be written for each version within the main app to keep it dynamic between versions, instead of trying to make a method within the scheduler to resolve conflicts.
+If two tasks have the same priority and preference, for low and medium just pick the task for that timeblock at random, for high priority ask the user which should be scheduled. This should be available for CLI and Streamlit interface, we will use a generator function to allow asking user and wait for the results.
+
+If 2 tasks such as "feed" or "walk" are scheduled for 2 or more pets the scheduler will attempt to schedule both tasks at the same time, this way we could feed all of our cats and dogs at the same time or walk all your dogs at the same time as long as the task name matches.
 
 Tasks can be daily recurring, or occur on only a single day for this demo.
 
 Availability will start as fully open blocks dictionary such that True is the default state of open availability and False means that the block is not available. I believe bool works well here due to only having 2 states, either available, or not available. Default dict example:
+Note: The blocks are increased to 26 to account for a task happening at 8pm that might take up 1 or 2 blocks.
+
 ```python
 availability = {
-    sunday: [True] * 24,
-    monday: [True] * 24,
-    tuesday: [True] * 24,
-    wednesday: [True] * 24,
-    thursday: [True] * 24,
-    friday: [True] * 24,
-    saturday: [True] * 24
+    sunday: [True] * 26,
+    monday: [True] * 26,
+    tuesday: [True] * 26,
+    wednesday: [True] * 26,
+    thursday: [True] * 26,
+    friday: [True] * 26,
+    saturday: [True] * 26
 }
 ```
 ## JSON storage

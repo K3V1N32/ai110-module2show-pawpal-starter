@@ -2,6 +2,7 @@ from __future__ import annotations
 import json
 import os
 import random
+import uuid
 from enum import Enum
 from typing import Generator
 
@@ -13,22 +14,40 @@ class Priority(Enum):
 
 DAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
 
+# 8:00 AM to 9:00 PM in 30-minute blocks. The window extends an hour past 8pm
+# so an 8pm-start task with up to an hour of duration still has blocks to occupy.
+BLOCKS_PER_DAY = 26
+
 PATH = "data/schedulers.json"
+
+
+def format_hour(hour: float) -> str:
+    """Format a 24-hour float hour (e.g. 10.5) as a clock string (e.g. '10:30')."""
+    whole_hour = int(hour)
+    minutes = round((hour - whole_hour) * 60)
+    return f"{whole_hour}:{minutes:02d}"
+
 
 class Task:
     def __init__(
         self,
         name: str,
         pet_name: str,
-        start_time: int,
+        start_time: float,
         total_blocks: int,
         priority: Priority,
         preference: bool = False,
         daily: bool = False,
         day: str | None = None,
+        id: str | None = None,
     ) -> None:
         if not daily and day is None:
             raise ValueError("day is required when daily is False")
+        # A stable id (independent of Python's built-in id()/object identity) so the same
+        # conceptual task can still be matched up after a save/load round-trip, where the
+        # copy living in pet.tasks and the copy living in a Scheduler's weekly_plan are
+        # deserialized as two distinct objects.
+        self.id = id or uuid.uuid4().hex
         self.name = name
         self.pet_name = pet_name
         self.start_time = start_time
@@ -42,9 +61,9 @@ class Task:
     def __repr__ (self) -> str:
         """Return a human-readable summary of the task including schedule, priority, and status."""
         if self.daily:
-            return f"The task {self.name} for {self.pet_name} is scheduled daily at {self.start_time}:00 for {self.total_blocks} hour(s) with priority {self.priority.name}. Preference: {self.preference}. Completion status: {'Complete' if self.is_complete else 'Incomplete'}."
+            return f"The task {self.name} for {self.pet_name} is scheduled daily at {format_hour(self.start_time)} for {self.total_blocks} hour(s) with priority {self.priority.name}. Preference: {self.preference}. Completion status: {'Complete' if self.is_complete else 'Incomplete'}."
         else:
-            return f"The task {self.name} for {self.pet_name} is scheduled for {self.day} at {self.start_time}:00 for {self.total_blocks} hour(s) with priority {self.priority.name}. Preference: {self.preference}. Completion status: {'Complete' if self.is_complete else 'Incomplete'}."
+            return f"The task {self.name} for {self.pet_name} is scheduled for {self.day} at {format_hour(self.start_time)} for {self.total_blocks} hour(s) with priority {self.priority.name}. Preference: {self.preference}. Completion status: {'Complete' if self.is_complete else 'Incomplete'}."
 
     def toggle_complete(self) -> None:
         """Flip the task's completion status between complete and incomplete."""
@@ -71,7 +90,7 @@ class Task:
             raise ValueError(f"day must be one of {DAYS}")
         self.day = day
 
-    def set_start_time(self, start: int) -> None:
+    def set_start_time(self, start: float) -> None:
         """Set the start hour for this task in 24-hour format (e.g. 8 for 8am)."""
         self.start_time = start
 
@@ -84,6 +103,7 @@ class Task:
     def to_dict(self) -> dict:
         """Serialize the task to a JSON-compatible dict."""
         return {
+            "id": self.id,
             "name": self.name,
             "pet_name": self.pet_name,
             "start_time": self.start_time,
@@ -107,6 +127,7 @@ class Task:
             preference=data["preference"],
             daily=data["daily"],
             day=data.get("day"),
+            id=data.get("id"),
         )
         task.is_complete = data.get("is_complete", False)
         return task
@@ -165,7 +186,7 @@ class Owner:
         self.name = name
         self.pets: list[Pet] = []
         self.availability: dict[str, list[bool]] = {
-            day: [True] * 26 for day in DAYS
+            day: [True] * BLOCKS_PER_DAY for day in DAYS
         }
 
     def __repr__(self) -> str:
@@ -197,7 +218,7 @@ class Owner:
         """Deserialize an Owner (with pets and availability) from a dict produced by to_dict()."""
         owner = cls(name=data["name"])
         owner.pets = [Pet.from_dict(p) for p in data.get("pets", [])]
-        owner.availability = data.get("availability", {day: [True] * 26 for day in DAYS})
+        owner.availability = data.get("availability", {day: [True] * BLOCKS_PER_DAY for day in DAYS})
         return owner
 
 
@@ -214,11 +235,31 @@ class Scheduler:
         result = []
         for day_tasks in self.weekly_plan.values():
             for task in day_tasks:
-                if id(task) not in seen:
+                if task.id not in seen:
                     if pet is None or task.pet_name == pet.name:
-                        seen.add(id(task))
+                        seen.add(task.id)
                         result.append(task)
         return result
+
+    def _purge_tasks(self, task_ids: set[str]) -> None:
+        """Remove any tasks with the given ids from the generated weekly plan."""
+        for day in DAYS:
+            self.weekly_plan[day] = [t for t in self.weekly_plan[day] if t.id not in task_ids]
+
+    def remove_pet(self, pet: Pet) -> None:
+        """Remove a pet and purge any of its tasks from the generated schedule."""
+        task_ids = {t.id for t in pet.tasks}
+        self.owner.remove_pet(pet)
+        self._purge_tasks(task_ids)
+
+    def remove_task(self, pet: Pet, task: Task) -> None:
+        """Remove a task from a pet and purge it from the generated schedule."""
+        pet.remove_task(task)
+        self._purge_tasks({task.id})
+
+    def __repr__(self) -> str:
+        """Return a summary of the scheduler's owner, pet count, and total scheduled tasks."""
+        return f"Scheduler for {self.owner.name} with {len(self.owner.pets)} pet(s) and {len(self.get_tasks())} scheduled task(s)."
 
     def get_sorted_tasks(
         self, sort_type: str = "time", sort_order: str = "ascending"
@@ -247,8 +288,12 @@ class Scheduler:
         # Sort descending: HIGH+pref > HIGH > MEDIUM+pref > MEDIUM > LOW+pref > LOW
         all_tasks.sort(key=lambda t: (t.priority.value * 2 + int(t.preference)), reverse=True)
 
-        # Per-day occupancy grid: occupied[day][block] = Task or None
-        occupied: dict[str, list[Task | None]] = {day: [None] * 26 for day in DAYS}
+        # Per-day occupancy grid: occupied[day][block] = list of tasks occupying that block.
+        # A block can hold more than one task at once because same-name tasks from different
+        # pets are co-scheduled (see below), so a single Task-or-None slot isn't enough.
+        occupied: dict[str, list[list[Task]]] = {
+            day: [[] for _ in range(BLOCKS_PER_DAY)] for day in DAYS
+        }
 
         for task in all_tasks:
             if task.daily:
@@ -260,13 +305,13 @@ class Scheduler:
             for day in days_to_assign:
                 # start_time is treated as 24h hour (e.g. 8=8am, 15=3pm)
                 # map to half-hour block index: block 0 = 8:00am
-                block_start = (task.start_time - 8) * 2
+                block_start = int((task.start_time - 8) * 2)
                 block_end = block_start + task.total_blocks
 
-                if block_start < 0 or block_end > 26:
+                if block_start < 0 or block_end > BLOCKS_PER_DAY:
                     self.plan_explanation.append(
                         f"{task.name} for {task.pet_name} was skipped on {day}: "
-                        f"start time {task.start_time}:00 is outside the 8am–8pm schedule window."
+                        f"start time {format_hour(task.start_time)} is outside the 8am–8pm schedule window."
                     )
                     continue
 
@@ -274,65 +319,82 @@ class Scheduler:
                 if not all(avail[block_start:block_end]):
                     self.plan_explanation.append(
                         f"{task.name} for {task.pet_name} was not scheduled on {day}: "
-                        f"owner unavailable at {task.start_time}:00."
+                        f"owner unavailable at {format_hour(task.start_time)}."
                     )
                     continue
 
-                # Find any conflicting task in the target blocks.
-                # Same-name tasks from different pets are co-scheduled (owner does them together).
-                conflict_task: Task | None = None
+                # Find every distinct existing task occupying the target blocks that genuinely
+                # conflicts with this one. Same-name tasks from different pets are co-scheduled
+                # (owner does them together) and are never conflicts.
+                conflicting_tasks: list[Task] = []
+                seen_ids: set[str] = set()
                 for b in range(block_start, block_end):
-                    occupant = occupied[day][b]
-                    if occupant is not None and not (
-                        occupant.name.lower() == task.name.lower()
-                        and occupant.pet_name != task.pet_name
-                    ):
-                        conflict_task = occupant
-                        break
+                    for occupant in occupied[day][b]:
+                        if occupant.id in seen_ids:
+                            continue
+                        if occupant.name.lower() == task.name.lower() and occupant.pet_name != task.pet_name:
+                            continue
+                        seen_ids.add(occupant.id)
+                        conflicting_tasks.append(occupant)
 
-                if conflict_task is None:
+                if not conflicting_tasks:
                     for b in range(block_start, block_end):
-                        occupied[day][b] = task
+                        occupied[day][b].append(task)
                     self.weekly_plan[day].append(task)
                 else:
-                    # Both tasks have the same composite priority (task was sorted after conflict_task,
-                    # so conflict_task has >= priority — equal is the only conflict case possible here)
-                    if task.priority == Priority.HIGH:
+                    # all_tasks is sorted descending by composite priority, and every conflicting
+                    # task was placed in an earlier iteration, so each one's composite priority is
+                    # always >= task's. The highest among them represents what task must beat.
+                    task_composite = task.priority.value * 2 + int(task.preference)
+                    conflict_task = max(
+                        conflicting_tasks, key=lambda t: t.priority.value * 2 + int(t.preference)
+                    )
+                    conflict_composite = conflict_task.priority.value * 2 + int(conflict_task.preference)
+
+                    def displace_conflicting_tasks() -> None:
+                        """Remove every conflicting task from the day's plan and occupancy grid."""
+                        conflicting_ids = {t.id for t in conflicting_tasks}
+                        for b in range(BLOCKS_PER_DAY):
+                            occupied[day][b] = [
+                                t for t in occupied[day][b] if t.id not in conflicting_ids
+                            ]
+                        self.weekly_plan[day] = [
+                            t for t in self.weekly_plan[day] if t.id not in conflicting_ids
+                        ]
+
+                    if task_composite < conflict_composite:
+                        self.plan_explanation.append(
+                            f"{task.name} for {task.pet_name} was not scheduled on {day}: "
+                            f"the {format_hour(task.start_time)} slot is already held by higher-priority "
+                            f"{conflict_task.name} for {conflict_task.pet_name}."
+                        )
+                    elif task.priority == Priority.HIGH:
                         # Yield conflict for user resolution
                         chosen = yield {"conflict": True, "task1": conflict_task, "task2": task, "day": day}
                         if chosen is task:
-                            # Replace conflict_task with task
-                            for b in range(24):
-                                if occupied[day][b] is conflict_task:
-                                    occupied[day][b] = None
-                            if conflict_task in self.weekly_plan[day]:
-                                self.weekly_plan[day].remove(conflict_task)
+                            displace_conflicting_tasks()
                             for b in range(block_start, block_end):
-                                occupied[day][b] = task
+                                occupied[day][b].append(task)
                             self.weekly_plan[day].append(task)
                             self.plan_explanation.append(
-                                f"HIGH priority conflict on {day} at {task.start_time}:00: "
+                                f"HIGH priority conflict on {day} at {format_hour(task.start_time)}: "
                                 f"user chose {task.name} over {conflict_task.name}."
                             )
                         else:
                             self.plan_explanation.append(
-                                f"HIGH priority conflict on {day} at {task.start_time}:00: "
+                                f"HIGH priority conflict on {day} at {format_hour(task.start_time)}: "
                                 f"user kept {conflict_task.name} over {task.name}."
                             )
                     else:
                         # MEDIUM or LOW tie — randomly pick; first-sorted task already holds the slot
                         keep = random.choice([conflict_task, task])
                         if keep is task:
-                            for b in range(24):
-                                if occupied[day][b] is conflict_task:
-                                    occupied[day][b] = None
-                            if conflict_task in self.weekly_plan[day]:
-                                self.weekly_plan[day].remove(conflict_task)
+                            displace_conflicting_tasks()
                             for b in range(block_start, block_end):
-                                occupied[day][b] = task
+                                occupied[day][b].append(task)
                             self.weekly_plan[day].append(task)
                         self.plan_explanation.append(
-                            f"{task.priority.name} priority tie on {day} at {task.start_time}:00 "
+                            f"{task.priority.name} priority tie on {day} at {format_hour(task.start_time)} "
                             f"between {task.name} and {conflict_task.name}: {keep.name} was randomly selected."
                         )
 
@@ -342,8 +404,8 @@ class Scheduler:
         """Return the percentage of the pet's tasks that made it into the schedule (0 if no tasks)."""
         if not pet.tasks:
             return 0
-        scheduled_ids = {id(t) for tasks in self.weekly_plan.values() for t in tasks}
-        scheduled_count = sum(1 for t in pet.tasks if id(t) in scheduled_ids)
+        scheduled_ids = {t.id for tasks in self.weekly_plan.values() for t in tasks}
+        scheduled_count = sum(1 for t in pet.tasks if t.id in scheduled_ids)
         return int((scheduled_count / len(pet.tasks)) * 100)
 
     def to_dict(self) -> dict:
@@ -400,7 +462,14 @@ class Storage:
         """Load all schedulers from the JSON file into memory and return them."""
         self.schedulers = [Scheduler.from_dict(s) for s in self._load_raw()]
         return self.schedulers
-    
+
+    def delete(self, scheduler_id: int) -> None:
+        """Remove a scheduler record from the JSON file by id (e.g. after an owner is deleted)."""
+        data = [s for s in self._load_raw() if s["id"] != scheduler_id]
+        os.makedirs(os.path.dirname(PATH), exist_ok=True)
+        with open(PATH, "w") as f:
+            json.dump(data, f, indent=2)
+
     def clear(self) -> None:
         """Wipe all schedulers from memory and delete the JSON file; for testing only."""
         # !!!!!Method to clear schedulers from storage, should only be used for testing.!!!!!
