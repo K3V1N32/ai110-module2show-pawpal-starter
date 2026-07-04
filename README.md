@@ -188,4 +188,4 @@ Describe your app in numbered steps so a reader can follow along without watchin
 5. <!-- Add more steps as needed -->
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
-[Demo](media/video/PawPal+Demo.mov)
+<video src="media/video/PawPal+Demo.mov" width="50%"></video>
