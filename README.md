@@ -92,7 +92,78 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
+========================================= test session starts =========================================
+platform darwin -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0 -- /Users/ks3276/projects/CodePath/AI110-PawPal+/ai110-module2show-pawpal-starter/.venv/bin/python3.13
+cachedir: .pytest_cache
+rootdir: /Users/ks3276/projects/CodePath/AI110-PawPal+/ai110-module2show-pawpal-starter
+configfile: pytest.ini
+plugins: anyio-4.14.0
+collected 62 items                                                                                    
+
+tests/test_pawpal.py::test_format_hour_whole_hour PASSED                                        [  1%]
+tests/test_pawpal.py::test_format_hour_half_hour PASSED                                         [  3%]
+tests/test_pawpal.py::test_task_requires_day_when_not_daily PASSED                              [  4%]
+tests/test_pawpal.py::test_task_allows_missing_day_when_daily PASSED                            [  6%]
+tests/test_pawpal.py::test_task_generates_unique_id_by_default PASSED                           [  8%]
+tests/test_pawpal.py::test_task_accepts_explicit_id PASSED                                      [  9%]
+tests/test_pawpal.py::test_toggle_complete_changes_status PASSED                                [ 11%]
+tests/test_pawpal.py::test_toggle_preference_changes_status PASSED                              [ 12%]
+tests/test_pawpal.py::test_toggle_daily_raises_without_day_set PASSED                           [ 14%]
+tests/test_pawpal.py::test_toggle_daily_switches_to_specific_day_once_set PASSED                [ 16%]
+tests/test_pawpal.py::test_toggle_daily_back_to_daily_is_always_allowed PASSED                  [ 17%]
+tests/test_pawpal.py::test_set_priority PASSED                                                  [ 19%]
+tests/test_pawpal.py::test_set_day_valid PASSED                                                 [ 20%]
+tests/test_pawpal.py::test_set_day_invalid_raises PASSED                                        [ 22%]
+tests/test_pawpal.py::test_set_start_time PASSED                                                [ 24%]
+tests/test_pawpal.py::test_set_total_blocks_valid_bounds PASSED                                 [ 25%]
+tests/test_pawpal.py::test_set_total_blocks_out_of_range_raises[0] PASSED                       [ 27%]
+tests/test_pawpal.py::test_set_total_blocks_out_of_range_raises[9] PASSED                       [ 29%]
+tests/test_pawpal.py::test_set_total_blocks_out_of_range_raises[-1] PASSED                      [ 30%]
+tests/test_pawpal.py::test_task_to_dict_from_dict_roundtrip PASSED                              [ 32%]
+tests/test_pawpal.py::test_add_task_increases_pet_task_count PASSED                             [ 33%]
+tests/test_pawpal.py::test_remove_task_from_pet PASSED                                          [ 35%]
+tests/test_pawpal.py::test_pet_get_tasks_no_filter_returns_all PASSED                           [ 37%]
+tests/test_pawpal.py::test_pet_get_tasks_daily_filter PASSED                                    [ 38%]
+tests/test_pawpal.py::test_pet_get_tasks_complete_and_incomplete_filters PASSED                 [ 40%]
+tests/test_pawpal.py::test_pet_get_tasks_day_filter_includes_daily_and_matching_day_only PASSED [ 41%]
+tests/test_pawpal.py::test_pet_to_dict_from_dict_roundtrip PASSED                               [ 43%]
+tests/test_pawpal.py::test_owner_default_availability_all_true_for_every_day PASSED             [ 45%]
+tests/test_pawpal.py::test_owner_add_and_remove_pet PASSED                                      [ 46%]
+tests/test_pawpal.py::test_owner_update_availability PASSED                                     [ 48%]
+tests/test_pawpal.py::test_owner_to_dict_from_dict_roundtrip PASSED                             [ 50%]
+tests/test_pawpal.py::test_scheduler_get_tasks_dedups_and_filters_by_pet PASSED                 [ 51%]
+tests/test_pawpal.py::test_scheduler_get_sorted_tasks_by_time PASSED                            [ 53%]
+tests/test_pawpal.py::test_scheduler_get_sorted_tasks_by_priority PASSED                        [ 54%]
+tests/test_pawpal.py::test_generate_schedule_places_simple_task PASSED                          [ 56%]
+tests/test_pawpal.py::test_generate_schedule_daily_task_assigned_to_every_day PASSED            [ 58%]
+tests/test_pawpal.py::test_generate_schedule_specific_day_task_assigned_only_to_that_day PASSED [ 59%]
+tests/test_pawpal.py::test_generate_schedule_skips_task_starting_before_window PASSED           [ 61%]
+tests/test_pawpal.py::test_generate_schedule_skips_task_extending_past_window PASSED            [ 62%]
+tests/test_pawpal.py::test_generate_schedule_skips_task_when_owner_unavailable PASSED           [ 64%]
+tests/test_pawpal.py::test_generate_schedule_co_schedules_same_name_different_pets PASSED       [ 66%]
+tests/test_pawpal.py::test_generate_schedule_higher_priority_wins_deterministically PASSED      [ 67%]
+tests/test_pawpal.py::test_generate_schedule_equal_priority_tie_keeps_existing PASSED           [ 69%]
+tests/test_pawpal.py::test_generate_schedule_equal_priority_tie_can_replace_existing PASSED     [ 70%]
+tests/test_pawpal.py::test_generate_schedule_high_priority_conflict_yields_for_user_input PASSED [ 72%]
+tests/test_pawpal.py::test_generate_schedule_high_priority_conflict_keep_existing_every_day PASSED [ 74%]
+tests/test_pawpal.py::test_generate_schedule_high_priority_conflict_choose_incoming_every_day PASSED [ 75%]
+tests/test_pawpal.py::test_generate_schedule_group_conflict_displaces_entire_co_scheduled_group PASSED [ 77%]
+tests/test_pawpal.py::test_generate_schedule_group_conflict_can_keep_the_group_instead PASSED   [ 79%]
+tests/test_pawpal.py::test_scheduler_remove_pet_purges_only_that_pets_tasks_from_schedule PASSED [ 80%]
+tests/test_pawpal.py::test_scheduler_remove_task_purges_it_from_schedule PASSED                 [ 82%]
+tests/test_pawpal.py::test_get_pet_happiness_zero_when_pet_has_no_tasks PASSED                  [ 83%]
+tests/test_pawpal.py::test_get_pet_happiness_partial_when_some_tasks_unscheduled PASSED         [ 85%]
+tests/test_pawpal.py::test_get_pet_happiness_survives_serialization_roundtrip PASSED            [ 87%]
+tests/test_pawpal.py::test_scheduler_remove_pet_purges_schedule_after_reload PASSED             [ 88%]
+tests/test_pawpal.py::test_scheduler_to_dict_from_dict_roundtrip PASSED                         [ 90%]
+tests/test_pawpal.py::test_storage_save_creates_file_and_load_reconstructs PASSED               [ 91%]
+tests/test_pawpal.py::test_storage_save_upserts_by_id_instead_of_duplicating PASSED             [ 93%]
+tests/test_pawpal.py::test_storage_delete_removes_only_target_scheduler PASSED                  [ 95%]
+tests/test_pawpal.py::test_storage_load_returns_empty_list_when_file_missing PASSED             [ 96%]
+tests/test_pawpal.py::test_storage_clear_resets_state_and_removes_file PASSED                   [ 98%]
+tests/test_pawpal.py::test_storage_load_raw_handles_corrupt_json_gracefully PASSED              [100%]
+
+========================================= 62 passed in 0.06s ==========================================
 ```
 
 ## 📐 Smarter Scheduling
@@ -117,3 +188,4 @@ Describe your app in numbered steps so a reader can follow along without watchin
 5. <!-- Add more steps as needed -->
 
 **Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
+[Demo](media/video/PawPal+Demo.mov)
