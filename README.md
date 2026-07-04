@@ -85,8 +85,8 @@ Explanations for scheduling decisions:
 # Run the full test suite:
 pytest
 
-# Run with coverage:
-pytest --cov
+# Run with more verbose tests:
+pytest -v
 ```
 
 Sample test output:
@@ -168,28 +168,28 @@ tests/test_pawpal.py::test_storage_load_raw_handles_corrupt_json_gracefully PASS
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
-
 | Feature | Method(s) | Notes |
 |---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Task sorting | Scheduler.get_sorted_tasks(sort_type, sort_order) | Sorting algorithm that uses list.sort method to sort the scheduled tasks by start time, or priority. |
+| Filtering | Pet.get_tasks(filter) | Filtering logic with several branching predicate rules (by day, daily-recurrence, completion status) built into the method to get_tasks from a pet, allowing for complex filtering of pet tasks |
+| Conflict handling | Scheduler.generate_schedule() | generate_schedule uses a greedy, priority-based interval-scheduling algorithm to flatten and sort tasks by composite priority score, mapping tasks to discrete half-hour blocks, while maintining per-day occupancy grid to detect overlaps. There are also advanced conflic-resolution rules such as pause and yield for user input via CLI or streamlit for high priority conflicts, and random tie-break for lower priority tasks. |
+| Recurring tasks | Task.daily(bool) | I've opted for daily vs scheduled on specific day to let users specify vet visits or training/dog park visits that may only happen on a single day. The default for a task is daily recurring. This is reflected in generate_schedule() and within __init__ of a task if daily is False then day is enforced, otherwise an error is raised. |
 
 ## 📸 Demo Walkthrough
 
 Describe your app in numbered steps so a reader can follow along without watching a video:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
+1. Enter a name
+2. Adjust Availability
+3. Add a Pet
+4. Add Tasks for that pet
+5. Repeat adding pets/tasks as needed
+6. Press the "Generate Schedule" Button on the sidebar, or "Regenerate Schedule" at the bottom of the "schedule" tab.
+7. Answer any conflict resolution pop-ups
+8. Browse the schedule, pet happiness, and conflict resolution reasoning.
+9. Adjust Availability, Pets, Tasks at your discretion from the tabs, then goto the schedule tab and press the regenerate schedule button at the bottom once you've made updates.
+10. The app saves your progress to file, so feel free to refresh, or come back at any time to review your schedule!
 
-**Screenshot or video** *(optional)*: <!-- Insert a screenshot or link to a demo video here -->
-
+**Screenshot or video** *(optional)*:
 
 https://github.com/user-attachments/assets/9ad682db-e558-487d-ae17-ebc69eb8fae7
-
-

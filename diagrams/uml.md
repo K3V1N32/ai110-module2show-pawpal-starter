@@ -11,9 +11,10 @@ classDiagram
     }
 
     class Task {
+        +String id
         +String name
         +String pet_name
-        +int start_time
+        +float start_time
         +int total_blocks
         +bool daily
         +String day
@@ -25,7 +26,7 @@ classDiagram
         +toggle_daily() None
         +set_priority(Priority priority) None
         +set_day(String day) None
-        +set_start_time(int start) None
+        +set_start_time(float start) None
         +set_total_blocks(int total) None
         +to_dict() dict
         +from_dict(dict data) Task$
@@ -48,7 +49,7 @@ classDiagram
         +dict availability
         +add_pet(Pet pet) None
         +remove_pet(Pet pet) None
-        +update_availability(dict)
+        +update_availability(dict) None
         +to_dict() dict
         +from_dict(dict data) Owner$
     }
@@ -62,6 +63,8 @@ classDiagram
         +get_sorted_tasks(String sort_type, String sort_order) List~Task~
         +generate_schedule() Generator
         +get_pet_happiness(Pet pet) int
+        +remove_pet(Pet pet) None
+        +remove_task(Pet pet, Task task) None
         +to_dict() dict
         +from_dict(dict data) Scheduler$
     }
@@ -70,6 +73,8 @@ classDiagram
         +List~Scheduler~ schedulers
         +save(Scheduler scheduler) None
         +load() List~Scheduler~
+        +delete(int scheduler_id) None
+        +clear() None
     }
 
     Scheduler "1" *-- "1" Owner : has

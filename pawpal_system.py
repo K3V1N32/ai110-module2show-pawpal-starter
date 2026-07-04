@@ -274,10 +274,29 @@ class Scheduler:
         return tasks
 
     def generate_schedule(self) -> Generator:
-        # Yields {"conflict": True, "task1": Task, "task2": Task} when a
-        # high-priority tie requires user input. Caller resolves by sending
-        # back the chosen Task via generator.send(chosen_task).
-        # Final yield: {"conflict": False, "final_schedule": dict[str, list[Task]]}
+        """Greedily build the weekly schedule from every pet's tasks.
+
+        Tasks are flattened across all pets and sorted descending by a composite
+        priority score (priority.value * 2 + preference), then placed one at a
+        time into a per-day half-hour block grid. Daily tasks are expanded across
+        all 7 days; single-day tasks occupy only their assigned day. A task is
+        skipped if its time window falls outside the 8am-9pm schedule or the
+        owner is unavailable during its blocks.
+
+        When a task's blocks overlap an already-placed task, the two are treated
+        as a conflict unless they share a case-insensitive name but belong to
+        different pets (co-scheduled, e.g. feeding two cats together). Conflicts
+        are resolved by composite priority score:
+          - Strictly lower composite score: the incoming task is dropped.
+          - Equal score, both MEDIUM/LOW: resolved via random.choice().
+          - Equal score, both HIGH: this generator yields
+            {"conflict": True, "task1": Task, "task2": Task, "day": str} and
+            pauses; the caller resolves it by sending back the winning Task via
+            generator.send(chosen_task).
+
+        Final yield: {"conflict": False, "final_schedule": dict[str, list[Task]]}.
+        Populates self.weekly_plan and self.plan_explanation as a side effect.
+        """
         self.weekly_plan = {day: [] for day in DAYS}
         self.plan_explanation = []
 
@@ -476,40 +495,3 @@ class Storage:
         self.schedulers = []
         if os.path.exists(PATH):
             os.remove(PATH)
-
-if __name__ == "__main__":
-    # Put CLI test code here.
-    print("You are running pawpal_system.py directly, this is a test of class features.")
-    kevin = Owner("Kevin") # Owner with open availability
-    new_schedule = Scheduler(1, kevin) # add a scheduler for Kevin
-    tigrex = Pet("Tigrex", "cat") # add a pet for Kevin
-    kevin.add_pet(tigrex) # link Tigrex to Kevin
-
-    fido = Pet("Fido", "dog") # add a second pet for Kevin
-    kevin.add_pet(fido) # link Fido to Kevin
-
-    tigrex.add_task(Task("Feed", "Tigrex", 8, 1, Priority.HIGH, True, True)) # add morning feed
-    tigrex.add_task(Task("Feed", "Tigrex", 15, 1, Priority.HIGH, True, True)) # add afternoon feed
-    tigrex.add_task(Task("Feed", "Tigrex", 19, 1, Priority.HIGH, True, True)) # add evening feed
-    tigrex.add_task(Task("Vet visit", "Tigrex", 10, 2, Priority.HIGH, False, False, "monday")) # add vet visit
-    tigrex.add_task(Task("Training", "Tigrex", 10, 1, Priority.HIGH, False, False, "monday")) # add training with obvious conflict with vet visit
-
-    gen = new_schedule.generate_schedule()
-    result = next(gen)
-    while result['conflict']:
-        print(f'Conflict on {result["day"]}: 1: {result["task1"].name} vs 2: {result["task2"].name}')
-        print('Choose which task to keep (1 or 2): ', end='')
-        choice = input()
-        if choice == '1':
-            result = gen.send(result['task1'])
-        elif choice == '2':
-            result = gen.send(result['task2'])
-
-    print('Schedule generated.')
-    print('Monday:', [t.name for t in new_schedule.weekly_plan['monday']])
-    print('Tuesday:', [t.name for t in new_schedule.weekly_plan['tuesday']])
-    print('Tigrex happiness:', new_schedule.get_pet_happiness(tigrex), '%')
-    print('Fido happiness:', new_schedule.get_pet_happiness(fido), '%')
-    print('Explanations:', new_schedule.plan_explanation)
-
-    print(new_schedule.weekly_plan)
