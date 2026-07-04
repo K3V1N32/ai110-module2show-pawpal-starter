@@ -84,7 +84,7 @@ I added this due to being asked to write these actions, but not having a spot to
 - How confident are you that your scheduler works correctly?
   - ⭐️⭐️⭐️⭐️⭐️ 5/5 stars. I am very confident that my scheduler works correctly based on over 60 assert tests and extensive manual testing and feature verification.
 - What edge cases would you test next if you had more time?
-  - The edge cases I would test given more time, I would test the input validation more, such as task total_blocks at certain times. There is also the fact that Pet.get_tasks() just returns the entire task list if the filter string is slightly off, such that "daliy" would give the whole list even though the expected output was likely the tasks for a day instead.
+  - The edge cases I would test given more time, would be to test the input validation more, such as task total_blocks given certain start_times. There is also the fact that Pet.get_tasks() just returns the entire task list if the filter string is slightly off, such that "daliy" would give the whole list even though the expected output was likely the tasks for a day instead.
 
 ---
 
@@ -127,19 +127,16 @@ This is a list of every Propmt I used with Claude to help complete this project 
 | "I'm noticing that the schedule is not properly representing if there are 2 feed or walk tasks in the same time slot, for example if 2 pets share a feed time for 8am daily, the schedule will only show one of those pets/tasks in the schedule instead of both as intended." |
 | "I've found that the generation does not find conflict if I assign 2 different tasks to the same block when it's 2 different pets and 2 different task names. We should make sure that if one pet has a 12pm feeding, and another pet has a 12pm vet visit, we assign only one of those tasks instead of both." |
 | "Input: Pet1 with Feed at 12pm, Pet2 with Feed at 12pm and Vet Visit on wednesday at 12pm, all tasks are High Priority and preference.
-
 Expected output: Only Vet Visit for Pet2, or Feed for both pets should be scheduled on wednesday.
-
 Actual output: The schedule seems to have both Feed(Pet1) and Vet Visit(Pet2) on wednesday
-
 Can you help me fix this bug" |
 | "I'd like to handle the Pet and Task adding with st.dialog instead of having a crowded UI in the pet tab. Implement an add pet/add task button that brings up a st.dialog to add in pet/task objects." |
 | "I'm running into a small bug after using the render_add_owner_dialog, the UI on the owner tab does not update to reflect the new owner even though I set the selected_scheduler to the new scheduler" |
 | "I have loading implemented and seems to be working upon manual testing, I now want to setup saving to file, I would like to save to file any time the user makes a change to make sure their progress is saved throughout the process. I would also like to make sure that when a pet, owner, or task is deleted that we properly update the schedule and any ids or indexes associated with that element to make sure no future bugs pop up from object deletion." |
 | "Small UI bug I noticed, when loading from json, it seems the pet happiness does not show correctly on the schedule page, it shows 0% happiness until a new schedule is generated, then upon refresh, it goes back to 0%" |
 | "Running streamlit is giving me this error in the terminal:
-
 2026-07-02 15:00:09.389 The widget with key "owner_selectbox" was created with a default value but also had its value set via the Session State API." |
 | "Come up with a full suite of pytest tests to make sure the backend works as intended and use tests/test_pawpal.py for the suite " |
 | "I would like to run the pytest file myself, but I am getting a "ImportError: attempted relative import with no known parent package" when importing pawpal_system, how do I run the pytest myself?" |
 | "Based on my final implementation, what updates should I make to my initial UML diagram to accurately show how my classes interact? Apply the changes to diagrams/uml.mmd " |
+| "Write out the features of my app in this terminal to apply to my readme.md later" |

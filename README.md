@@ -1,26 +1,123 @@
 # PawPal+ (Module 2 Project)
 
-You are building **PawPal+**, a Streamlit app that helps a pet owner plan care tasks for their pet.
+[Video Demo](#video)
 
-## Scenario
+## PawPal+ Features
+### Owner Management
 
-A busy pet owner needs help staying consistent with pet care. They want an assistant that can:
+- Create and manage multiple owner profiles, each with their own schedule
+- Switch between owners via a selector
+- Rename an owner (with duplicate-name validation)
+- Delete an owner (with confirmation dialog), cascading to remove all their pets, tasks, and schedule data
 
-- Track pet care tasks (walks, feeding, meds, enrichment, grooming, etc.)
-- Consider constraints (time available, priority, owner preferences)
-- Produce a daily plan and explain why it chose that plan
+### Availability Setting
 
-Your job is to design the system first (UML), then implement the logic in Python, then connect it to the Streamlit UI.
+- Interactive weekly grid (half-hour blocks, 8 AM–8 PM) for marking when the owner is available
+- Checkbox-per-cell editing via an editable data table, one column per day
 
-## What you will build
+### Pet Management
 
-Your final app should:
+- Add pets (name + species) to an owner profile, with duplicate-name validation
+- Delete a pet (with confirmation), which also removes all of that pet's tasks
+- View a per-pet task count at a glance
 
-- Let a user enter basic owner + pet info
-- Let a user add/edit tasks (duration + priority at minimum)
-- Generate a daily schedule/plan based on constraints and priorities
-- Display the plan clearly (and ideally explain the reasoning)
-- Include tests for the most important scheduling behaviors
+### Task Management
+
+- Add tasks per pet with: name, daily vs. specific-day recurrence, start time (30-min increments), duration (30–240 min), priority (Low/Medium/High), and a "preference" flag
+- Edit any task's details inline via expandable panels
+- Delete individual tasks
+
+### Schedule Generation
+
+- Auto-generate a weekly schedule from each pet's tasks and the owner's availability
+- Interactive conflict resolution: when two HIGH priority tasks compete for the same slot, the user is prompted to choose which one keeps it
+- Regenerate the schedule on demand
+
+### Weekly Schedule View
+
+- Read-only weekly grid showing which tasks occupy which half-hour blocks, per day
+- Per-pet "happiness" score/metric based on how well their tasks were scheduled
+- Human-readable scheduling notes explaining conflicts or skipped tasks
+
+### Guided Onboarding
+
+- Step-by-step progress flow (create owner → set availability → add pets → add tasks → generate schedule) that unlocks tabs as the user completes each step
+- Returning users with saved data skip straight to the full schedule view
+
+### Persistence
+
+- All owners, pets, tasks, and schedules are automatically saved to disk after every change, so no progress is lost between sessions
+
+
+## Scheduling Algorithm
+**Approach**: Greedy, priority-ordered placement
+
+PawPal+ builds each week's schedule with a single-pass greedy algorithm rather than an optimal solver — it processes tasks once, in priority order, placing each one if it fits.
+
+### 1. Composite priority scoring
+Every task gets a score: priority.value * 2 + preference (priority is Low=1/Medium=2/High=3, preference is a 0/1 boolean flag). This means a "preferred" Medium task (2×2+1=5) outranks a plain Medium task (2×2+0=4) but still loses to any High task (3×2=6 or 7). All tasks across all pets are flattened into one list and sorted descending by this score, so the algorithm always tries to place the most important tasks first.
+
+### 2. Expansion and placement
+- Daily tasks are expanded into 7 per-day placements (one for each day of the week); single-day tasks get just one.
+- Each task's start time and duration are converted into a range of half-hour blocks (8:00 AM–9:00 PM, 26 blocks/day).
+- A task is skipped outright if its blocks fall outside the schedule window or the owner marked themselves unavailable for any of those blocks.
+
+### 3. Conflict detection
+The algorithm tracks a per-day, per-block occupancy grid. When a task's blocks overlap something already placed, it checks whether the overlap is a real conflict:
+
+- **Co-scheduling exception**: two tasks with the same name but different pets (e.g., "Feed" for two different cats) are never treated as conflicting — they're assumed to happen together.
+- Everything else is a genuine conflict.
+
+### 4. Conflict resolution (by composite score)
+- Lower score loses automatically: the incoming task is dropped and skipped, no interaction needed.
+- Tied score, Medium/Low: resolved silently via random.choice() — a coin flip between the two.
+- Tied score, both High: the algorithm pauses and hands the decision to the user. This is implemented as a Python generator — generate_schedule() yields a {"conflict": True, task1, task2, day} payload, the UI shows a dialog, and the user's choice is sent back into the generator via .send() to resume scheduling exactly where it left off.
+
+### 5. Explanations and metrics
+- Every skip, drop, tie-break, and user decision is logged to plan_explanation as a human-readable note, shown in the Schedule tab so users understand why a task didn't make the cut.
+- A pet happiness score is computed as (scheduled tasks / total tasks) × 100 — a simple satisfaction metric per pet based on how much of their requested routine actually fit.
+
+### Design tradeoffs worth noting
+
+- It's greedy, not globally optimal — a locked-in high-priority task can block a slightly-lower-priority one that might have produced a "better" overall schedule if placement order were different.
+- Complexity is roughly O(n log n) for the sort plus O(n × blocks) for placement — fine at personal-schedule scale, not built for large-scale optimization.
+- The generator/yield pattern lets multi-step user interaction (conflict resolution) live inside what's otherwise a synchronous scheduling pass, avoiding a more complex state machine in the UI layer.
+
+### **[Here is the UML diagram for PawPal+ backend systems](/diagrams/uml.mmd)**
+
+# Stretch Feature: Data Persistance
+
+### Explain the persistance workflow and which files were modified:
+
+## Workflow
+Persistance works across two files with a clean split in ownership: pawpal_system.py owns storage mechanics and dict serialization, and app.py owns when to trigger saving and loading from json.
+
+### Startup (load):
+
+1. st.session_state.storage = Storage() is created once per session.
+2. st.session_state.storage.load() reads data/schedulers.json via Storage._load_raw(), which tolerates a missing file ([]) or corrupt JSON ([]) rather than crashing.
+3. Each raw dict is turned back into a live Scheduler object via Scheduler.from_dict(), which recursively rebuilds the nested Owner → Pet → Task objects.
+4. If any schedulers were loaded, the app's progress state jumps straight to step 5 (full schedule view) instead of onboarding.
+
+### Every mutation (save):
+
+1. Any UI action that changes data (renaming an owner, adding a pet, editing a task, generating a schedule, etc.) calls save_progress().
+2. That function calls st.session_state.storage.save(st.session_state.selected_scheduler) - only the currently selected scheduler is saved, not the whole list.
+3. Storage.save() re-reads the whole JSON file, finds the entry whose "id" matches this scheduler and overwrites it in place (or appends if it's new), then rewrites the entire file. This upsert-by-id pattern is why every Scheduler needs a stable, collision-free id — hence next_scheduler_id() in app.py computing max(existing_ids) + 1 instead of len(schedulers) + 1, so a deleted-then-recreated scheduler can't collide with an id still on disk.
+
+### Deletion:
+
+- Storage.delete(scheduler_id) filters that id out of the raw JSON list and rewrites the file, called when an owner is deleted.
+
+## Files involed
+>pawpal_system.py
+- Storage class is the persistence layer, it handles reads/writes on the JSON file at data/schedulers.json
+- to_dict() / from_dict()
+  - These methods are applied to every domain class, Task, Pet, Owner, and Scheduler. Each object knows how to serialize itself and it's children, and reconstruct itself from a plain dict. This is what lets Storage stay generic, it never touches individual fields, just calls scheduler.to_dict()
+
+>app.py
+- Loads from json on startup if it exists
+- Calls save_progress() helper on nearly every state-changing action to achieve maximum persistence.
 
 ## Getting started
 
@@ -190,6 +287,8 @@ Describe your app in numbered steps so a reader can follow along without watchin
 9. Adjust Availability, Pets, Tasks at your discretion from the tabs, then goto the schedule tab and press the regenerate schedule button at the bottom once you've made updates.
 10. The app saves your progress to file, so feel free to refresh, or come back at any time to review your schedule!
 
-**Screenshot or video** *(optional)*:
+# Video
+
+Below is a video demo of using PawPal+ in action!
 
 https://github.com/user-attachments/assets/9ad682db-e558-487d-ae17-ebc69eb8fae7
